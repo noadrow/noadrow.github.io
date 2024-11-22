@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech Game</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 20px auto;
+        }
+        #controls {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div id="controls">
+        <button id="startSpeech">Start Speaking</button>
+        <button id="startGame">Start Game</button>
+        <p id="message"></p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const messageElement = document.getElementById("message");
+        const startGameBtn = document.getElementById("startGame");
+        const startSpeechBtn = document.getElementById("startSpeech");
+    
+        const targetText = "Hello world"; // Pre-determined text to recognize
+    
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+    
+        startGameBtn.addEventListener("click", () => {
+            // Text-to-speech
+            const utterance = new SpeechSynthesisUtterance(targetText);
+            speechSynthesis.speak(utterance);
+    
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "24px Arial";
+            ctx.fillText("Say: " + targetText, 50, 50);
+            messageElement.textContent = "Listen and repeat!";
+        });
+    
+        startSpeechBtn.addEventListener("click", () => {
+            messageElement.textContent = "Listening...";
+            recognition.start();
+        });
+    
+        recognition.addEventListener("result", (event) => {
+            const spokenText = event.results[0][0].transcript;
+    
+            const similarity = calculateSimilarity(spokenText, targetText);
+    
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "24px Arial";
+            ctx.fillText("You said: " + spokenText, 50, 100);
+    
+            if (similarity > 0.8) {
+                ctx.fillText("Close enough! Similarity: " + Math.round(similarity * 100) + "%", 50, 150);
+            } else {
+                ctx.fillText("Not close enough. Similarity: " + Math.round(similarity * 100) + "%", 50, 150);
+            }
+        });
+    
+        recognition.addEventListener("end", () => {
+            messageElement.textContent = "Recognition ended. Press Start Speaking to try again.";
+        });
+    
+        recognition.addEventListener("error", (event) => {
+            messageElement.textContent = "Error: " + event.error;
+        });
+    
+        // Levenshtein Distance for similarity calculation
+        function calculateSimilarity(str1, str2) {
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const dp = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
+    
+            for (let i = 0; i <= len1; i++) dp[i][0] = i;
+            for (let j = 0; j <= len2; j++) dp[0][j] = j;
+    
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1];
+                    } else {
+                        dp[i][j] = Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]) + 1;
+                    }
+                }
+            }
+    
+            const distance = dp[len1][len2];
+            const maxLen = Math.max(len1, len2);
+            return 1 - distance / maxLen; // Similarity as a percentage
+        }
+    </script>
+    
+    
+</body>
+</html>
